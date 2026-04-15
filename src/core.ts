@@ -134,12 +134,12 @@ function buildToastHTML(t: ToastState): string {
   const msgHTML = `<div class="pt-message">${escapeHTML(t.message)}</div>`;
 
   const actionHTML = t.action
-    ? `<button class="pt-action" data-pt-action="true">${escapeHTML(t.action.label)}</button>`
+    ? `<button type="button" class="pt-action" data-pt-action="true">${escapeHTML(t.action.label)}</button>`
     : '';
 
   const closeHTML =
     t.closable !== false && config.closable
-      ? `<button class="pt-close" aria-label="Dismiss">${ICONS.close}</button>`
+      ? `<button type="button" class="pt-close" aria-label="Dismiss">${ICONS.close}</button>`
       : '';
 
   const dur = t.duration !== undefined ? t.duration : config.duration;
@@ -170,8 +170,9 @@ function renderToast(t: ToastState): ToastState {
   if (t.className) el.className += ` ${t.className}`;
   el.setAttribute('data-id', t.id);
   el.setAttribute('data-type', t.type || 'default');
-  el.setAttribute('role', 'alert');
-  el.setAttribute('aria-live', 'polite');
+  const isUrgent = t.type === 'error' || t.type === 'warning';
+  el.setAttribute('role', isUrgent ? 'alert' : 'status');
+  el.setAttribute('aria-live', isUrgent ? 'assertive' : 'polite');
   if (t.style) Object.assign(el.style, t.style);
 
   if (t.custom) {
@@ -298,8 +299,9 @@ export function update(id: string, options: Partial<ToastOptions> & { message?: 
     if (t.className) el.className += ` ${t.className}`;
     el.setAttribute('data-id', t.id);
     el.setAttribute('data-type', t.type || 'default');
-    el.setAttribute('role', 'alert');
-    el.setAttribute('aria-live', 'polite');
+    const isUrgent = t.type === 'error' || t.type === 'warning';
+    el.setAttribute('role', isUrgent ? 'alert' : 'status');
+    el.setAttribute('aria-live', isUrgent ? 'assertive' : 'polite');
     if (t.style) Object.assign(el.style, t.style);
 
     el.innerHTML = buildToastHTML(t);
@@ -373,14 +375,18 @@ export function applyTheme(theme: ThemeMode): void {
   config.theme = theme;
 }
 
-// ─── Init (one-time setup) ────────────────────────────────────────────────────
+// ─── Init ─────────────────────────────────────────────────────────────────────
 export function createToaster(options: ToasterConfig = {}): void {
   Object.assign(config, options);
   if (typeof document !== 'undefined') {
     injectStyles();
-    if (container) {
+    if (container && container.isConnected) {
       container.setAttribute('data-pos', config.position);
-      if (config.theme !== 'auto') container.setAttribute('data-pt-theme', config.theme);
+      if (config.theme === 'auto') {
+        container.removeAttribute('data-pt-theme');
+      } else {
+        container.setAttribute('data-pt-theme', config.theme);
+      }
     }
   }
 }

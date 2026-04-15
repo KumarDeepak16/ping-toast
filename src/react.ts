@@ -46,23 +46,25 @@ export function PingToaster({
   dedup,
   config,
 }: PingToasterProps): null {
-  const initialized = useRef(false);
+  // Apply config on mount and whenever props change
   useEffect(() => {
-    if (!initialized.current) {
-      const opts: ToasterConfig = {};
-      if (position !== undefined) opts.position = position;
-      if (duration !== undefined) opts.duration = duration;
-      if (maxVisible !== undefined) opts.maxVisible = maxVisible;
-      if (theme !== undefined) opts.theme = theme;
-      if (closable !== undefined) opts.closable = closable;
-      if (progress !== undefined) opts.progress = progress;
-      if (dedup !== undefined) opts.dedup = dedup;
-      createToaster(opts);
-      if (config) setTheme(config);
-      if (theme && theme !== 'auto') applyTheme(theme);
-      initialized.current = true;
-    }
-  }, []);
+    const opts: ToasterConfig = {};
+    if (position !== undefined) opts.position = position;
+    if (duration !== undefined) opts.duration = duration;
+    if (maxVisible !== undefined) opts.maxVisible = maxVisible;
+    if (theme !== undefined) opts.theme = theme;
+    if (closable !== undefined) opts.closable = closable;
+    if (progress !== undefined) opts.progress = progress;
+    if (dedup !== undefined) opts.dedup = dedup;
+    createToaster(opts);
+    if (theme) applyTheme(theme);
+  }, [position, duration, maxVisible, theme, closable, progress, dedup]);
+
+  // Apply custom colors when config changes
+  useEffect(() => {
+    if (config) setTheme(config);
+  }, [config]);
+
   return null;
 }
 
