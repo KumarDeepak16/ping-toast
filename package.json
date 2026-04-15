@@ -1,0 +1,87 @@
+{
+  "name": "ping-toast",
+  "version": "1.0.0",
+  "description": "Ultra-lightweight, zero-dependency toast notification system with animated icons, action buttons, and confirm/alert dialogs. ~5kb gzipped.",
+  "author": "Deepak Kumar <https://github.com/kumardeepak16>",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./react": {
+      "import": {
+        "types": "./dist/react.d.ts",
+        "default": "./dist/react.js"
+      },
+      "require": {
+        "types": "./dist/react.d.cts",
+        "default": "./dist/react.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "toast",
+    "notification",
+    "alert",
+    "confirm",
+    "snackbar",
+    "ui",
+    "zero-dependency",
+    "lightweight",
+    "animation",
+    "react-toast",
+    "vanilla-js",
+    "typescript",
+    "popup",
+    "message"
+  ],
+  "homepage": "https://pingtoast.1619.in",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KumarDeepak16/ping-toast"
+  },
+  "bugs": {
+    "url": "https://github.com/KumarDeepak16/ping-toast/issues"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test:app": "cd tests/test-app && npm install && npx vite",
+    "release:patch": "npm version patch && npm run build && npm publish",
+    "release:minor": "npm version minor && npm run build && npm publish",
+    "release:major": "npm version major && npm run build && npm publish",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,13 @@
+src
+tests
+.github
+.gitignore
+.npmignore
+tsconfig.json
+tsup.config.ts
+Dockerfile
+docker-compose.yml
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+CHANGELOG.md
+*.tgz
