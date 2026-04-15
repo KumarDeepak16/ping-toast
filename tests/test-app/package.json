@@ -10,6 +10,6 @@
     "ping-toast": "file:../../"
   },
   "devDependencies": {
-    "vite": "^6.3.0"
+    "vite": "^8.0.8"
   }
 }
