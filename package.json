@@ -1,6 +1,6 @@
 {
   "name": "ping-toast",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Ultra-lightweight, zero-dependency toast notification system with animated icons, action buttons, and confirm/alert dialogs. ~5kb gzipped.",
   "author": "Deepak Kumar <https://github.com/kumardeepak16>",
   "license": "MIT",
