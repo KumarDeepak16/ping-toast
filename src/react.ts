@@ -60,10 +60,11 @@ export function PingToaster({
     if (theme) applyTheme(theme);
   }, [position, duration, maxVisible, theme, closable, progress, dedup]);
 
-  // Apply custom colors when config changes
+  // Apply custom colors — stringify to avoid infinite re-renders from inline objects
+  const configKey = config ? JSON.stringify(config) : '';
   useEffect(() => {
     if (config) setTheme(config);
-  }, [config]);
+  }, [configKey]);
 
   return null;
 }

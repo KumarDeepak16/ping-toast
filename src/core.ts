@@ -349,7 +349,6 @@ export function toastPromise<T>(promise: Promise<T>, messages: PromiseMessages<T
 // ─── Theme API ────────────────────────────────────────────────────────────────
 export function setTheme(vars: ThemeVars): void {
   if (typeof document === 'undefined') return;
-  const root = document.documentElement;
   const map: Record<string, string> = {
     primary: '--pt-loading',
     success: '--pt-success',
@@ -361,10 +360,12 @@ export function setTheme(vars: ThemeVars): void {
     radius: '--pt-radius',
     font: '--pt-font',
   };
+  // Apply to container directly so it overrides theme selectors
+  const c = getContainer();
   Object.entries(vars).forEach(([k, v]) => {
     if (v === undefined) return;
-    if (map[k]) root.style.setProperty(map[k], v);
-    else root.style.setProperty(k, v);
+    const prop = map[k] || k;
+    c.style.setProperty(prop, v);
   });
 }
 
@@ -378,16 +379,14 @@ export function applyTheme(theme: ThemeMode): void {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 export function createToaster(options: ToasterConfig = {}): void {
   Object.assign(config, options);
-  if (typeof document !== 'undefined') {
-    injectStyles();
-    if (container && container.isConnected) {
-      container.setAttribute('data-pos', config.position);
-      if (config.theme === 'auto') {
-        container.removeAttribute('data-pt-theme');
-      } else {
-        container.setAttribute('data-pt-theme', config.theme);
-      }
-    }
+  if (typeof document === 'undefined') return;
+  // Eagerly create container so config applies immediately
+  const c = getContainer();
+  c.setAttribute('data-pos', config.position);
+  if (config.theme === 'auto') {
+    c.removeAttribute('data-pt-theme');
+  } else {
+    c.setAttribute('data-pt-theme', config.theme);
   }
 }
 
