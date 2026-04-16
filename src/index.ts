@@ -1,12 +1,11 @@
-export { toast, createToaster, setTheme, applyTheme, dismiss, dismissAll, update, on } from './core';
+export { toast, configure, dismiss, dismissAll, update, on } from './core';
 export type {
   ToastType,
   ToastPosition,
   ThemeMode,
   ToastEvent,
   ToastOptions,
-  ToasterConfig,
-  ThemeVars,
+  PingToasterProps,
   ToastState,
   ToastEventCallback,
   Unsubscribe,

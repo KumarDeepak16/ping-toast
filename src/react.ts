@@ -1,103 +1,86 @@
 import { useEffect, useRef } from 'react';
-import { toast, createToaster, setTheme, applyTheme } from './core';
+import { toast, configure, on } from './core';
 import type {
-  ToasterConfig,
-  ThemeVars,
-  ThemeMode,
-  ToastPosition,
+  PingToasterProps,
   ToastEvent,
   ToastEventCallback,
 } from './types';
 
-export { toast, setTheme, applyTheme } from './core';
+export { toast, configure } from './core';
 export type * from './types';
 
 /**
- * <PingToaster /> — Drop-in JSX component. One line setup.
+ * <PingToaster /> — Drop-in setup component. One line.
  *
  * ```tsx
+ * // Basic
+ * <PingToaster position="top-right" theme="auto" />
+ *
+ * // With custom theme colors
  * <PingToaster
  *   position="top-right"
- *   theme="auto"
- *   duration={3500}
- *   config={{ success: '#22c55e', error: '#ef4444', radius: '16px' }}
+ *   background="#18181b"
+ *   foreground="#fafafa"
+ *   success="#22c55e"
+ *   error="#ef4444"
+ *   radius="12px"
  * />
  * ```
  */
-export interface PingToasterProps {
-  position?: ToastPosition;
-  duration?: number;
-  maxVisible?: number;
-  theme?: ThemeMode;
-  closable?: boolean;
-  progress?: boolean;
-  dedup?: boolean;
-  /** Custom theme colors — pass CSS variable overrides here */
-  config?: ThemeVars;
-}
+export { PingToasterProps };
 
-export function PingToaster({
-  position,
-  duration,
-  maxVisible,
-  theme,
-  closable,
-  progress,
-  dedup,
-  config,
-}: PingToasterProps): null {
-  // Apply config on mount and whenever props change
-  useEffect(() => {
-    const opts: ToasterConfig = {};
-    if (position !== undefined) opts.position = position;
-    if (duration !== undefined) opts.duration = duration;
-    if (maxVisible !== undefined) opts.maxVisible = maxVisible;
-    if (theme !== undefined) opts.theme = theme;
-    if (closable !== undefined) opts.closable = closable;
-    if (progress !== undefined) opts.progress = progress;
-    if (dedup !== undefined) opts.dedup = dedup;
-    createToaster(opts);
-    if (theme) applyTheme(theme);
-  }, [position, duration, maxVisible, theme, closable, progress, dedup]);
+export function PingToaster(props: PingToasterProps): null {
+  const {
+    position, duration, maxVisible, theme,
+    closable, progress, dedup,
+    background, foreground, radius, font,
+  } = props;
 
-  // Apply custom colors — stringify to avoid infinite re-renders from inline objects
-  const configKey = config ? JSON.stringify(config) : '';
+  // Serialize theme props to detect changes without object identity issues
+  const themeKey = [background, foreground, radius, font].join('|');
+
   useEffect(() => {
-    if (config) setTheme(config);
-  }, [configKey]);
+    configure(props);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [position, duration, maxVisible, theme, closable, progress, dedup, themeKey]);
 
   return null;
 }
 
 /**
  * useToast() — hook for imperative toast calls.
+ *
+ * ```tsx
+ * const { toast, success, error } = useToast()
+ * success('Saved!')
+ * ```
  */
 export function useToast() {
   return {
     toast,
-    success: toast.success,
-    error: toast.error,
-    warning: toast.warning,
-    info: toast.info,
-    loading: toast.loading,
-    promise: toast.promise,
-    update: toast.update,
-    dismiss: toast.dismiss,
+    success:    toast.success,
+    error:      toast.error,
+    warning:    toast.warning,
+    info:       toast.info,
+    loading:    toast.loading,
+    promise:    toast.promise,
+    update:     toast.update,
+    dismiss:    toast.dismiss,
     dismissAll: toast.dismissAll,
-    custom: toast.custom,
-    confirm: toast.confirm,
-    alert: toast.alert,
+    custom:     toast.custom,
+    confirm:    toast.confirm,
+    alert:      toast.alert,
   } as const;
 }
 
 /**
- * useToastListener(event, callback) — subscribe to toast events.
+ * useToastListener(event, callback) — subscribe to toast lifecycle events.
  */
 export function useToastListener(event: ToastEvent, fn: ToastEventCallback): void {
   const cb = useRef(fn);
   cb.current = fn;
   useEffect(() => {
-    return toast.on(event, (data) => cb.current(data));
+    return on(event, data => cb.current(data));
   }, [event]);
 }
 

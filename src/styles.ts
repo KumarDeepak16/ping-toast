@@ -112,8 +112,6 @@ export const STYLES = `
   box-shadow:0 4px 20px rgba(0,0,0,0.4);
 }
 
-/* Type accent — no border, handled by gradient wash */
-
 /* Gradient wash */
 .pt-toast::before{
   content:'';

@@ -23,28 +23,23 @@ export interface ToastOptions {
   custom?: string | ((toast: ToastState) => string);
 }
 
-export interface ToasterConfig {
+/** Props for <PingToaster /> — the single setup component */
+export interface PingToasterProps {
   position?: ToastPosition;
   duration?: number;
   maxVisible?: number;
   theme?: ThemeMode;
-  icons?: Partial<Record<ToastType, string>>;
   closable?: boolean;
   progress?: boolean;
   dedup?: boolean;
-}
-
-export interface ThemeVars {
-  primary?: string;
-  success?: string;
-  error?: string;
-  warning?: string;
-  info?: string;
+  /** Override toast background color (hex or any CSS color) */
   background?: string;
+  /** Override toast text color (hex or any CSS color) */
   foreground?: string;
+  /** Override border-radius e.g. "8px" or "999px" */
   radius?: string;
+  /** Override font-family */
   font?: string;
-  [key: string]: string | undefined;
 }
 
 export interface ToastState extends Required<Pick<ToastOptions, 'type'>> {
