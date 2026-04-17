@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://pingtoast.1619.in/logo.png" alt="PingToast" width="96" height="96" />
+<img src="https://pingtoast.1619.in/pingtoast-og.webp" alt="PingToast" height="96" />
 
 # PingToast
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.5 (2026-04-17)
+
+### Fixes
+
+- `<PingToaster />` now REPLACES the config on each render — omitting a prop resets it to the factory default, matching React intuition. Previously, once you set e.g. `position="bottom-left"` then removed the prop, the old value would stick around
+- `<PingToaster />` and `configure()` are now cleanly separated: the React component does full-replace (props = config), while vanilla `configure({ theme: 'dark' })` still merges so existing theme overrides survive
+
+### DX
+
+- Warn in development when more than one `<PingToaster />` instance is mounted. Multiple instances silently let the last-mounted one's props override the rest — the warning points you to the conflict so "my position prop isn't working" stops being a mystery
+
 ## 1.0.4 (2026-04-17)
 
 ### Features

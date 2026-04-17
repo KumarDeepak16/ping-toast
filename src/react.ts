@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { toast, configure, on } from './core';
+import { toast, configure, _configureFromReact, on } from './core';
 import type {
   PingToasterProps,
   ToastEvent,
@@ -46,7 +46,7 @@ export function PingToaster(props: PingToasterProps): null {
   const themeKey = [background, foreground, radius, font].join('|');
 
   useIsoLayoutEffect(() => {
-    configure(props);
+    _configureFromReact(props);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     position, duration, maxVisible, theme,
@@ -54,6 +54,28 @@ export function PingToaster(props: PingToasterProps): null {
     animation, gap, offset,
     themeKey,
   ]);
+
+  // Dev-mode instance counter: silently having two <PingToaster> instances means
+  // the later one's props win and users wonder why their config is ignored.
+  useEffect(() => {
+    // Accessing process/NODE_ENV indirectly so this compiles without @types/node.
+    const g = globalThis as { process?: { env?: { NODE_ENV?: string } } };
+    if (
+      typeof document === 'undefined' ||
+      g.process?.env?.NODE_ENV === 'production'
+    ) return;
+    const d = document as Document & { __ptInstances?: number };
+    const n = d.__ptInstances = (d.__ptInstances || 0) + 1;
+    if (n > 1) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[ping-toast] Multiple <PingToaster /> instances detected. ' +
+        'Only one should be mounted at your app root — the last-mounted one ' +
+        "will silently override the others' props (position, theme, etc.)."
+      );
+    }
+    return () => { d.__ptInstances = Math.max(0, (d.__ptInstances || 1) - 1); };
+  }, []);
 
   return null;
 }

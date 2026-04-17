@@ -154,23 +154,37 @@ function applyToastTheme(el: HTMLElement): void {
   else el.style.removeProperty('border-radius');
 }
 
-// ─── Internal configure — called by PingToaster ───────────────────────────────
+// ─── Configure — vanilla `configure()` merges with current config ─────────────
+// (Merge semantics let vanilla users call `configure({ theme: 'dark' })` without
+// wiping previously-set `background`, `radius`, etc.)
 export function configure(props: PingToasterProps): void {
+  applyConfig(props, cfg);
+}
+
+// ─── Internal — called by <PingToaster>. Each render REPLACES the config: any
+// prop the user omits resets to the factory default. This matches React intuition
+// ("what I pass is what I get") — omitting `position` returns to the default
+// `top-right`, not whatever happened to be set previously.
+export function _configureFromReact(props: PingToasterProps): void {
+  applyConfig(props, defaults);
+}
+
+function applyConfig(props: PingToasterProps, base: InternalConfig): void {
   cfg = {
-    position:   props.position   ?? cfg.position,
-    duration:   props.duration   ?? cfg.duration,
-    maxVisible: props.maxVisible ?? cfg.maxVisible,
-    theme:      props.theme      ?? cfg.theme,
-    closable:   props.closable   ?? cfg.closable,
-    progress:   props.progress   ?? cfg.progress,
-    dedup:      props.dedup      ?? cfg.dedup,
-    animation:  props.animation  ?? cfg.animation,
-    gap:        props.gap        ?? cfg.gap,
-    offset:     props.offset     ?? cfg.offset,
-    background: props.background ?? cfg.background,
-    foreground: props.foreground ?? cfg.foreground,
-    radius:     props.radius     ?? cfg.radius,
-    font:       props.font       ?? cfg.font,
+    position:   props.position   ?? base.position,
+    duration:   props.duration   ?? base.duration,
+    maxVisible: props.maxVisible ?? base.maxVisible,
+    theme:      props.theme      ?? base.theme,
+    closable:   props.closable   ?? base.closable,
+    progress:   props.progress   ?? base.progress,
+    dedup:      props.dedup      ?? base.dedup,
+    animation:  props.animation  ?? base.animation,
+    gap:        props.gap        ?? base.gap,
+    offset:     props.offset     ?? base.offset,
+    background: props.background ?? base.background,
+    foreground: props.foreground ?? base.foreground,
+    radius:     props.radius     ?? base.radius,
+    font:       props.font       ?? base.font,
   };
 
   if (typeof document === 'undefined') return;
