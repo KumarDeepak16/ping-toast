@@ -19,6 +19,9 @@ interface InternalConfig {
   closable: boolean;
   progress: boolean;
   dedup: boolean;
+  animation: string;
+  gap: number;
+  offset: number;
   // theme overrides — applied as inline styles so they always win
   background: string;
   foreground: string;
@@ -34,6 +37,9 @@ const defaults: InternalConfig = {
   closable: true,
   progress: true,
   dedup: true,
+  animation: 'slide',
+  gap: 10,
+  offset: 16,
   background: '',
   foreground: '',
   radius: '',
@@ -68,17 +74,50 @@ function injectStyles(): void {
   styleInjected = true;
 }
 
+function resolveTheme(theme: string): string {
+  if (theme !== 'auto') return theme;
+  if (typeof matchMedia === 'undefined') return 'light';
+  return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+// When user picks theme:'auto', react to OS preference changes live.
+let mqlListener: ((e: MediaQueryListEvent) => void) | null = null;
+function syncAutoThemeListener(): void {
+  if (typeof matchMedia === 'undefined') return;
+  const mql = matchMedia('(prefers-color-scheme: dark)');
+  if (mqlListener) {
+    mql.removeEventListener?.('change', mqlListener);
+    mqlListener = null;
+  }
+  if (cfg.theme === 'auto') {
+    mqlListener = (e) => {
+      if (cfg.theme !== 'auto' || !container) return;
+      container.setAttribute('data-pt-theme', e.matches ? 'dark' : 'light');
+    };
+    mql.addEventListener?.('change', mqlListener);
+  }
+}
+
 function getContainer(): HTMLElement {
   if (container && container.isConnected) return container;
   injectStyles();
   container = document.createElement('div');
-  container.className = 'pt-container';
+  container.className = 'pt-c';
   container.setAttribute('data-pos', cfg.position);
+  container.setAttribute('data-anim', cfg.animation);
   container.setAttribute('role', 'region');
   container.setAttribute('aria-label', 'Notifications');
-  if (cfg.theme !== 'auto') container.setAttribute('data-pt-theme', cfg.theme);
+  container.setAttribute('data-pt-theme', resolveTheme(cfg.theme));
+  applyContainerLayout(container);
   document.body.appendChild(container);
+  syncAutoThemeListener();
   return container;
+}
+
+// ─── Apply layout (gap/offset) as inline styles on container ──────────────────
+function applyContainerLayout(c: HTMLElement): void {
+  c.style.gap = `${cfg.gap}px`;
+  c.style.padding = `${cfg.offset}px`;
 }
 
 function emit(event: string, data: ToastState): void {
@@ -90,10 +129,10 @@ function emit(event: string, data: ToastState): void {
 // by all children — no cascade specificity fights, no !important needed.
 function applyContainerTheme(c: HTMLElement): void {
   const map: Array<[keyof InternalConfig, string]> = [
-    ['background', '--pt-bg'],
-    ['foreground', '--pt-fg'],
-    ['radius',     '--pt-radius'],
-    ['font',       '--pt-font'],
+    ['background', '--pb'],
+    ['foreground', '--pf'],
+    ['radius',     '--pr'],
+    ['font',       '--pfm'],
   ];
   for (const [key, cssVar] of map) {
     const val = cfg[key] as string;
@@ -125,23 +164,28 @@ export function configure(props: PingToasterProps): void {
     closable:   props.closable   ?? cfg.closable,
     progress:   props.progress   ?? cfg.progress,
     dedup:      props.dedup      ?? cfg.dedup,
-    background: props.background ?? '',
-    foreground: props.foreground ?? '',
-    radius:     props.radius     ?? '',
-    font:       props.font       ?? '',
+    animation:  props.animation  ?? cfg.animation,
+    gap:        props.gap        ?? cfg.gap,
+    offset:     props.offset     ?? cfg.offset,
+    background: props.background ?? cfg.background,
+    foreground: props.foreground ?? cfg.foreground,
+    radius:     props.radius     ?? cfg.radius,
+    font:       props.font       ?? cfg.font,
   };
 
   if (typeof document === 'undefined') return;
 
   const c = getContainer();
   c.setAttribute('data-pos', cfg.position);
-  if (cfg.theme === 'auto') c.removeAttribute('data-pt-theme');
-  else c.setAttribute('data-pt-theme', cfg.theme);
+  c.setAttribute('data-anim', cfg.animation);
+  c.setAttribute('data-pt-theme', resolveTheme(cfg.theme));
 
+  applyContainerLayout(c);
   applyContainerTheme(c);
+  syncAutoThemeListener();
 
   // Re-apply to existing toasts
-  c.querySelectorAll<HTMLElement>('.pt-toast').forEach(el => applyToastTheme(el));
+  c.querySelectorAll<HTMLElement>('.pt-t').forEach(el => applyToastTheme(el));
 }
 
 // ─── Swipe to dismiss ─────────────────────────────────────────────────────────
@@ -153,7 +197,7 @@ function attachSwipe(el: HTMLElement, id: string): () => void {
   function onDown(e: MouseEvent | TouchEvent) {
     startX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     swiping = true;
-    el.classList.add('pt-toast--swiping');
+    el.classList.add('pt-sw');
   }
   function onMove(e: MouseEvent | TouchEvent) {
     if (!swiping) return;
@@ -164,7 +208,7 @@ function attachSwipe(el: HTMLElement, id: string): () => void {
   function onUp() {
     if (!swiping) return;
     swiping = false;
-    el.classList.remove('pt-toast--swiping');
+    el.classList.remove('pt-sw');
     if (Math.abs(dx) > 80) dismiss(id);
     else { el.style.transform = ''; el.style.opacity = ''; }
     dx = 0;
@@ -189,44 +233,109 @@ function attachSwipe(el: HTMLElement, id: string): () => void {
 function buildToastHTML(t: ToastState): string {
   let iconHTML = '';
   if (t.type === 'loading') {
-    iconHTML = `<div class="pt-icon"><div class="pt-spinner"></div></div>`;
+    iconHTML = `<div class="pt-ic"><div class="pt-sp"></div></div>`;
   } else if (t.icon !== undefined) {
-    iconHTML = `<div class="pt-icon">${t.icon}</div>`;
+    iconHTML = `<div class="pt-ic">${t.icon}</div>`;
   } else if (ICONS[t.type]) {
-    iconHTML = `<div class="pt-icon">${ICONS[t.type]}</div>`;
+    iconHTML = `<div class="pt-ic">${ICONS[t.type]}</div>`;
   }
 
-  const titleHTML = t.title ? `<div class="pt-title">${escapeHTML(t.title)}</div>` : '';
-  const descHTML  = t.description ? `<div class="pt-desc">${escapeHTML(t.description)}</div>` : '';
-  const msgHTML   = `<div class="pt-message">${escapeHTML(t.message)}</div>`;
+  const titleHTML = t.title ? `<div class="pt-tt">${escapeHTML(t.title)}</div>` : '';
+  const descHTML  = t.description ? `<div class="pt-d">${escapeHTML(t.description)}</div>` : '';
+  const msgHTML   = `<div class="pt-m">${escapeHTML(t.message)}</div>`;
   const actionHTML = t.action
-    ? `<button type="button" class="pt-action" data-pt-action="true">${escapeHTML(t.action.label)}</button>`
+    ? `<button type="button" class="pt-a" data-pt-action="true">${escapeHTML(t.action.label)}</button>`
     : '';
   const closeHTML = t.closable !== false && cfg.closable
-    ? `<button type="button" class="pt-close" aria-label="Dismiss">${ICONS.close}</button>`
+    ? `<button type="button" class="pt-cl" aria-label="Dismiss">${ICONS.close}</button>`
     : '';
   const dur = t.duration !== undefined ? t.duration : cfg.duration;
   const progressHTML = t.progress !== false && cfg.progress && dur > 0 && t.type !== 'loading'
-    ? `<div class="pt-progress" style="animation-duration:${dur}ms"></div>`
+    ? `<div class="pt-pr" style="animation-duration:${dur}ms"></div>`
     : '';
 
-  return `${iconHTML}<div class="pt-body">${titleHTML}${msgHTML}${descHTML}</div>${actionHTML}${closeHTML}${progressHTML}`;
+  return `${iconHTML}<div class="pt-b">${titleHTML}${msgHTML}${descHTML}</div>${actionHTML}${closeHTML}${progressHTML}`;
+}
+
+// ─── FLIP: smoothly animate existing siblings when one is added/removed ──────
+// Captures sibling rects BEFORE the DOM mutation, then after the mutation
+// inverts them with a transform, and plays them back to the new position.
+// This removes the "snap" when stacked toasts reflow.
+function captureSiblingRects(c: HTMLElement): Map<HTMLElement, DOMRect> {
+  const map = new Map<HTMLElement, DOMRect>();
+  c.querySelectorAll<HTMLElement>('.pt-t').forEach(el => {
+    if (!el.classList.contains('pt-x')) {
+      map.set(el, el.getBoundingClientRect());
+    }
+  });
+  return map;
+}
+
+function playSiblingFLIP(before: Map<HTMLElement, DOMRect>): void {
+  before.forEach((oldRect, el) => {
+    if (!el.isConnected) return;
+    const newRect = el.getBoundingClientRect();
+    const dy = oldRect.top - newRect.top;
+    const dx = oldRect.left - newRect.left;
+    if (Math.abs(dy) < 0.5 && Math.abs(dx) < 0.5) return;
+    // Skip if element is mid-entrance (would fight its own transition)
+    if (el.classList.contains('pt-e')) return;
+    el.style.transition = 'none';
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    // Force reflow so the browser registers the start position
+    el.getBoundingClientRect();
+    el.style.transition = 'transform .4s cubic-bezier(.22,1,.36,1)';
+    el.style.transform = '';
+    const clear = () => {
+      el.style.transition = '';
+      el.removeEventListener('transitionend', clear);
+    };
+    el.addEventListener('transitionend', clear);
+  });
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 function renderToast(t: ToastState): ToastState {
   const c = getContainer();
 
+  // Dedup — update the existing toast in place instead of dismiss+create.
+  // This avoids the "old one collapses while new one enters" visual jank.
   if (cfg.dedup) {
     const dup = toasts.find(x => x.message === t.message && x.id !== t.id && !x._exiting);
-    if (dup) dismiss(dup.id);
+    if (dup && dup._el) {
+      // Extend its lifetime, add a subtle pulse, and drop the duplicate toast record
+      const dupEl = dup._el;
+      dupEl.classList.remove('pt-pl');
+      // Reset the progress bar animation
+      const prog = dupEl.querySelector<HTMLElement>('.pt-pr');
+      if (prog) {
+        prog.style.animation = 'none';
+        void prog.offsetWidth;
+        prog.style.animation = '';
+      }
+      // Force a reflow for pulse restart
+      void dupEl.offsetWidth;
+      dupEl.classList.add('pt-pl');
+      scheduleRemoval(dup);
+      // Remove the new toast record we just pushed; keep dup active
+      toasts = toasts.filter(x => x.id !== t.id);
+      emit('show', dup);
+      return dup;
+    }
   }
 
-  const visible = toasts.filter(x => !x._exiting);
-  if (visible.length > cfg.maxVisible) dismiss(visible[0].id);
+  // Enforce maxVisible — oldest exits first
+  const visible = toasts.filter(x => !x._exiting && x.id !== t.id);
+  while (visible.length >= cfg.maxVisible) {
+    const oldest = visible.shift();
+    if (oldest) dismiss(oldest.id);
+  }
+
+  // Capture sibling positions BEFORE insertion for FLIP
+  const before = captureSiblingRects(c);
 
   const el = document.createElement('div');
-  el.className = 'pt-toast pt-toast--entering';
+  el.className = 'pt-t pt-e';
   if (t.className) el.className += ` ${t.className}`;
   el.setAttribute('data-id', t.id);
   el.setAttribute('data-type', t.type || 'default');
@@ -247,13 +356,19 @@ function renderToast(t: ToastState): ToastState {
   // Apply theme overrides directly — these always win
   applyToastTheme(el);
 
+  // Play FLIP on siblings so they ease into their new stack position
+  playSiblingFLIP(before);
+
+  // Force reflow so the entering transform is committed before we remove it
   el.getBoundingClientRect();
   requestAnimationFrame(() => {
-    el.classList.remove('pt-toast--entering');
-    el.classList.add('pt-toast--visible');
+    requestAnimationFrame(() => {
+      el.classList.remove('pt-e');
+      el.classList.add('pt-v');
+    });
   });
 
-  const closeBtn = el.querySelector('.pt-close');
+  const closeBtn = el.querySelector('.pt-cl');
   if (closeBtn) closeBtn.addEventListener('click', () => dismiss(t.id));
 
   const actionBtn = el.querySelector('[data-pt-action]');
@@ -265,7 +380,7 @@ function renderToast(t: ToastState): ToastState {
   t._cleanupSwipe = attachSwipe(el, t.id);
 
   if (t.duration !== 0 && cfg.duration !== 0 && t.type !== 'loading') {
-    const progress = el.querySelector('.pt-progress') as HTMLElement | null;
+    const progress = el.querySelector('.pt-pr') as HTMLElement | null;
     el.addEventListener('mouseenter', () => {
       clearTimeout(t._timer);
       if (progress) progress.style.animationPlayState = 'paused';
@@ -316,18 +431,33 @@ export function dismiss(id: string): void {
   clearTimeout(t._timer);
   t._cleanupSwipe?.();
   if (t._el) {
-    t._el.classList.add('pt-toast--exiting');
-    t._el.addEventListener('transitionend', () => {
-      t._el?.remove();
+    const el = t._el;
+    const c = el.parentElement;
+    // Capture siblings BEFORE we mark exiting — so FLIP baseline has the
+    // exiting toast's height included, and siblings can smoothly shift up.
+    const before = c ? captureSiblingRects(c) : null;
+    el.classList.add('pt-x');
+    // After marking exiting, siblings re-layout; play FLIP on them.
+    if (before && c) {
+      // Skip the exiting toast itself
+      before.delete(el);
+      // Run after the exit transition begins so new rects reflect the collapse
+      requestAnimationFrame(() => playSiblingFLIP(before));
+    }
+    let finalized = false;
+    const finalize = () => {
+      if (finalized) return;
+      finalized = true;
+      el.remove();
       toasts = toasts.filter(x => x.id !== id);
       emit('dismiss', t);
-    }, { once: true });
-    setTimeout(() => {
-      t._el?.remove();
-      toasts = toasts.filter(x => x.id !== id);
-    }, 400);
+    };
+    el.addEventListener('transitionend', finalize, { once: true });
+    // Safety net in case transitionend doesn't fire (reduced motion, etc.)
+    setTimeout(finalize, 500);
   } else {
     toasts = toasts.filter(x => x.id !== id);
+    emit('dismiss', t);
   }
 }
 
@@ -348,7 +478,7 @@ export function update(id: string, options: Partial<ToastOptions> & { message?: 
 
   if (t._el) {
     const el = document.createElement('div');
-    el.className = 'pt-toast pt-toast--visible';
+    el.className = 'pt-t pt-v';
     if (t.className) el.className += ` ${t.className}`;
     el.setAttribute('data-id', t.id);
     el.setAttribute('data-type', t.type || 'default');
@@ -362,7 +492,7 @@ export function update(id: string, options: Partial<ToastOptions> & { message?: 
 
     applyToastTheme(el);
 
-    const closeBtn = el.querySelector('.pt-close');
+    const closeBtn = el.querySelector('.pt-cl');
     if (closeBtn) closeBtn.addEventListener('click', () => dismiss(t.id));
 
     const actionBtn = el.querySelector('[data-pt-action]');
@@ -428,47 +558,36 @@ toast.on         = on;
 
 // ─── Confirm / Alert ──────────────────────────────────────────────────────────
 toast.confirm = (message: string, opts: { confirm?: string; cancel?: string } = {}): Promise<boolean> => {
-  const confirmLabel = opts.confirm || 'Confirm';
-  const cancelLabel  = opts.cancel  || 'Cancel';
   return new Promise<boolean>(resolve => {
     const id = createToast('', {
       duration: 0, closable: false, progress: false,
-      custom: () => `
-        <div style="padding:16px 20px;width:100%">
-          <div style="font-weight:600;font-size:14px;margin-bottom:4px;color:var(--pt-fg)">${escapeHTML(message)}</div>
-          <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-            <button class="pt-confirm-cancel" style="padding:6px 16px;border-radius:8px;border:1px solid var(--pt-border);background:transparent;color:var(--pt-fg);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--pt-font)">${escapeHTML(cancelLabel)}</button>
-            <button class="pt-confirm-ok" style="padding:6px 16px;border-radius:8px;border:none;background:var(--pt-fg);color:var(--pt-bg);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--pt-font)">${escapeHTML(confirmLabel)}</button>
-          </div>
-        </div>`,
+      custom: () =>
+        `<div class="pt-dl"><div class="pt-dm">${escapeHTML(message)}</div>` +
+        `<div class="pt-db"><button class="pt-bt pt-bc">${escapeHTML(opts.cancel || 'Cancel')}</button>` +
+        `<button class="pt-bt pt-bo">${escapeHTML(opts.confirm || 'Confirm')}</button></div></div>`,
     });
     requestAnimationFrame(() => {
       const t = toasts.find(x => x.id === id);
       if (t?._el) {
-        t._el.querySelector('.pt-confirm-ok')?.addEventListener('click', () => { dismiss(id); resolve(true); });
-        t._el.querySelector('.pt-confirm-cancel')?.addEventListener('click', () => { dismiss(id); resolve(false); });
+        t._el.querySelector('.pt-bo')?.addEventListener('click', () => { dismiss(id); resolve(true); });
+        t._el.querySelector('.pt-bc')?.addEventListener('click', () => { dismiss(id); resolve(false); });
       }
     });
   });
 };
 
 toast.alert = (message: string, opts: { buttonLabel?: string } = {}): Promise<void> => {
-  const label = opts.buttonLabel || 'OK';
   return new Promise<void>(resolve => {
     const id = createToast('', {
       duration: 0, closable: false, progress: false,
-      custom: () => `
-        <div style="padding:16px 20px;width:100%">
-          <div style="font-weight:600;font-size:14px;color:var(--pt-fg)">${escapeHTML(message)}</div>
-          <div style="display:flex;justify-content:flex-end;margin-top:12px">
-            <button class="pt-alert-ok" style="padding:6px 16px;border-radius:8px;border:none;background:var(--pt-fg);color:var(--pt-bg);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--pt-font)">${escapeHTML(label)}</button>
-          </div>
-        </div>`,
+      custom: () =>
+        `<div class="pt-dl"><div class="pt-dm">${escapeHTML(message)}</div>` +
+        `<div class="pt-db"><button class="pt-bt pt-bo">${escapeHTML(opts.buttonLabel || 'OK')}</button></div></div>`,
     });
     requestAnimationFrame(() => {
       const t = toasts.find(x => x.id === id);
       if (t?._el) {
-        t._el.querySelector('.pt-alert-ok')?.addEventListener('click', () => { dismiss(id); resolve(); });
+        t._el.querySelector('.pt-bo')?.addEventListener('click', () => { dismiss(id); resolve(); });
       }
     });
   });

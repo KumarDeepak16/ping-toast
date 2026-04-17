@@ -2,6 +2,7 @@ export type ToastType = 'default' | 'success' | 'error' | 'warning' | 'info' | '
 export type ToastPosition = 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
 export type ThemeMode = 'light' | 'dark' | 'auto';
 export type ToastEvent = 'show' | 'dismiss' | 'update';
+export type ToastAnimation = 'slide' | 'fade' | 'scale' | 'bounce' | 'flip';
 
 export interface ToastAction {
   label: string;
@@ -40,6 +41,12 @@ export interface PingToasterProps {
   radius?: string;
   /** Override font-family */
   font?: string;
+  /** Enter/exit animation style. Default: 'slide' */
+  animation?: ToastAnimation;
+  /** Gap between stacked toasts in pixels. Default: 10 */
+  gap?: number;
+  /** Offset from screen edge in pixels. Default: 16 */
+  offset?: number;
 }
 
 export interface ToastState extends Required<Pick<ToastOptions, 'type'>> {

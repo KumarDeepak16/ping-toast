@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { toast, configure, on } from './core';
 import type {
   PingToasterProps,
@@ -9,6 +9,11 @@ import type {
 export { toast, configure } from './core';
 export type * from './types';
 
+// useLayoutEffect on client, useEffect on server — avoids SSR warning and
+// ensures config applies BEFORE the first paint on the client.
+const useIsoLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
 /**
  * <PingToaster /> — Drop-in setup component. One line.
  *
@@ -16,13 +21,13 @@ export type * from './types';
  * // Basic
  * <PingToaster position="top-right" theme="auto" />
  *
- * // With custom theme colors
+ * // With animation + custom theme
  * <PingToaster
  *   position="top-right"
+ *   animation="bounce"
+ *   theme="dark"
  *   background="#18181b"
  *   foreground="#fafafa"
- *   success="#22c55e"
- *   error="#ef4444"
  *   radius="12px"
  * />
  * ```
@@ -33,16 +38,22 @@ export function PingToaster(props: PingToasterProps): null {
   const {
     position, duration, maxVisible, theme,
     closable, progress, dedup,
+    animation, gap, offset,
     background, foreground, radius, font,
   } = props;
 
   // Serialize theme props to detect changes without object identity issues
   const themeKey = [background, foreground, radius, font].join('|');
 
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     configure(props);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [position, duration, maxVisible, theme, closable, progress, dedup, themeKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    position, duration, maxVisible, theme,
+    closable, progress, dedup,
+    animation, gap, offset,
+    themeKey,
+  ]);
 
   return null;
 }

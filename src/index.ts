@@ -3,6 +3,7 @@ export type {
   ToastType,
   ToastPosition,
   ThemeMode,
+  ToastAnimation,
   ToastEvent,
   ToastOptions,
   PingToasterProps,
